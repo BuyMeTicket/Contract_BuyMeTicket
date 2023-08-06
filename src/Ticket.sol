@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {ITicket} from "./interfaces/ITicket.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Ticket is ITicket, ERC1155, Ownable {
+contract Ticket is ERC1155, Ownable {
     string[] public names; //string array of names
     uint256[] public ids; //uint array of ids
     uint256[] public mintPrices;
@@ -21,7 +20,6 @@ contract Ticket is ITicket, ERC1155, Ownable {
     mapping(string => uint256) public nameToId; //name to id mapping
     mapping(uint256 => string) public idToName; //id to name mapping
     mapping(uint256 => uint256) public idToPrice; //id to price mapping
-    mapping(uint256 => uint256) public idToCurrentSupply; //id to supply mapping
 
     /*
     constructor is executed when the factory contract calls its own deployERC1155 method
@@ -117,6 +115,16 @@ contract Ticket is ITicket, ERC1155, Ownable {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
         require(_checkMaxPerWalletWhenMintBatch(amounts), "Ticket: max per wallet exceeded");
         _mintBatch(to, _ids, amounts, data);
+    }
+
+    // implement refund mechanism
+    function refund() public {
+        
+    }
+
+    // implement withdraw feature for owner
+    function withdraw() public onlyOwner {
+        payable(owner()).transfer(address(this).balance);
     }
 
     //** Help Function */
