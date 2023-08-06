@@ -48,12 +48,17 @@ contract TicketFactory is ITicketFactory {
         uint256 _endTimestamp,
         uint256[] memory _mintPrices,
         uint256[] memory _maxSupplys,
-        uint256[] memory _ids,
-        string[] memory _names
+        string[] memory _names,
+        uint256[] memory _ids
     ) public onlyEventHolder returns (address _eventAddress, uint256 _eventId) {
         Ticket t = new Ticket(
             _contractName,
             _baseURI,
+            _maxPerWallet,
+            _startTimestamp,
+            _endTimestamp,
+            _mintPrices,
+            _maxSupplys,
             _names,
             _ids
         );

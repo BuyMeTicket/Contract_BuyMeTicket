@@ -19,7 +19,7 @@ interface ITicketFactory {
         uint256 _endTimestamp,
         uint256[] memory _mintPrices,
         uint256[] memory _maxSupplys,
-        uint256[] memory _ids,
-        string[] memory _names
+        string[] memory _names,
+        uint256[] memory _ids
     ) external returns (address _eventAddress, uint256 _eventId);
 }
