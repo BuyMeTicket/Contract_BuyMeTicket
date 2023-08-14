@@ -7,6 +7,7 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {UD60x18, ud} from "@prb/math/UD60x18.sol";
 
 contract Ticket is ERC1155, ERC1155Burnable, Ownable {
     IERC20 public asset; // the asset used to mint tickets
@@ -125,7 +126,15 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
 
     // TODO: implement refund mechanism
     function refund(address _burner, uint256 _id, uint256 _amount) public {
+        burn(_burner, _id, _amount);
+        // transfer asset to burner
+        // ex. 100ee18 * 3 * 0.5 = 150e18
+        uint256 refundAmount = (ud(idToPrice[_id] * _amount).mul(_getRefundRate())).intoUint256();
+        SafeERC20.safeTransferFrom(asset, address(this), _burner, refundAmount);
+    }
 
+    function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public {
+        burnBatch(_burner, _ids, _amounts);
     }
 
     // implement withdraw feature for owner
@@ -136,13 +145,10 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
     /**
      * @dev See {IERC1155-safeTransferFrom}.
      */
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _id,
-        uint256 _amount,
-        bytes memory _data
-    ) public override {
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data)
+        public
+        override
+    {
         // silence compiler warning
         _from;
         _to;
@@ -173,7 +179,23 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         revert("Ticket: transfer not allowed");
     }
 
+    //** View Function */
+
+    // notice: the decimals of refund rate is 18
+    function getRefundRate() external view returns (uint256 _refundRate) {
+        _refundRate = _getRefundRate().intoUint256();
+    }
+
     //** Help Function */
+
+    function _getRefundRate() internal view returns (UD60x18 _refundRate) {
+        _refundRate = _max(ud(endTimestamp - block.timestamp).div(ud(endTimestamp - startTimestamp)), ud(0.2e18));
+        _refundRate = _refundRate.div(ud(1e18));
+    }
+
+    function _max(UD60x18 _a, UD60x18 _b) internal pure returns (UD60x18 _maximum) {
+        _maximum = _a.gt(_b) ? _a : _b;
+    }
 
     function _checkMaxPerWalletWhenMint(uint256 amount) internal view returns (bool) {
         uint256 total = 0;

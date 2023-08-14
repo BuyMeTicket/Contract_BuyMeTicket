@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PRBTest} from "@prb-test/PRBTest.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {console} from "forge-std/console.sol";
+import {UD60x18, ud} from "@prb/math/UD60x18.sol";
 
 abstract contract BaseTest is PRBTest, StdCheats {
     ERC20 internal usdt;
