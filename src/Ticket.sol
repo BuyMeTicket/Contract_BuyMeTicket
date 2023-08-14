@@ -133,6 +133,46 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         payable(owner()).transfer(address(this).balance);
     }
 
+    /**
+     * @dev See {IERC1155-safeTransferFrom}.
+     */
+    function safeTransferFrom(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _amount,
+        bytes memory _data
+    ) public override {
+        // silence compiler warning
+        _from;
+        _to;
+        _id;
+        _amount;
+        _data;
+        // we forbid transfer in this contract
+        revert("Ticket: transfer not allowed");
+    }
+
+    /**
+     * @dev See {IERC1155-safeBatchTransferFrom}.
+     */
+    function safeBatchTransferFrom(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        bytes memory _data
+    ) public override {
+        // silence compiler warning
+        _from;
+        _to;
+        _ids;
+        _amounts;
+        _data;
+        // we forbid transfer in this contract
+        revert("Ticket: transfer not allowed");
+    }
+
     //** Help Function */
 
     function _checkMaxPerWalletWhenMint(uint256 amount) internal view returns (bool) {
