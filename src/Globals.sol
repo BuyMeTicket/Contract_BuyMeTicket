@@ -4,6 +4,12 @@ pragma solidity 0.8.19;
 import {IGlobals} from "./interfaces/IGlobals.sol";
 
 contract Globals is IGlobals {
+    //** Modifier */
+    modifier onlyGovernor() {
+        require(msg.sender == governor, "Globals: only governor");
+        _;
+    }
+
     //** Storage */
     address public override governor;
     mapping(address => bool) public isEventHolders;
@@ -15,7 +21,7 @@ contract Globals is IGlobals {
     }
 
     //** allow list function */
-    function setValidEventHolder(address _eventHolder, bool _isValid) external override {
+    function setValidEventHolder(address _eventHolder, bool _isValid) external override onlyGovernor {
         require(_eventHolder != address(0), "Globals: _eventHolder is zero address");
         isEventHolders[_eventHolder] = _isValid;
         emit ValidEventHolderSet(_eventHolder, _isValid);
@@ -37,11 +43,5 @@ contract Globals is IGlobals {
     //** view function */
     function isValidEventHolder(address _eventHolder) external view override returns (bool) {
         return isEventHolders[_eventHolder];
-    }
-
-    //** Modifier */
-    modifier onlyGovernor() {
-        require(msg.sender == governor, "Globals: only governor");
-        _;
     }
 }
