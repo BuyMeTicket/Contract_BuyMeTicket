@@ -33,6 +33,7 @@ contract TicketFactory is ITicketFactory {
 
     /**
      * @dev deploys a ERC1155 token with given parameters
+     * @param _asset address of the asset to be used for minting
      * @param _contractName  name of our ERC1155 token
      * @param _baseURI resolving to our hosted metadata
      * @param _maxPerWallet maximum number of ERC1155 tokens that can be minted per wallet
@@ -46,6 +47,7 @@ contract TicketFactory is ITicketFactory {
      * @return _eventId index of deployed ERC1155 token
      */
     function createEvent(
+        address _asset,
         string memory _contractName,
         string memory _baseURI,
         uint256 _maxPerWallet,
@@ -54,9 +56,10 @@ contract TicketFactory is ITicketFactory {
         uint256[] memory _mintPrices,
         uint256[] memory _maxSupplys,
         string[] memory _names,
-        uint8[] memory _ids
+        uint256[] memory _ids
     ) public onlyEventHolder returns (address _eventAddress, uint256 _eventId) {
         Ticket t = new Ticket(
+            _asset, 
             _contractName,
             _baseURI,
             _maxPerWallet,
@@ -83,9 +86,20 @@ contract TicketFactory is ITicketFactory {
      * @param _amount amount of tokens you wish to mint
      */
     function mintEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external {
-        uint256 id = getIdByName(_eventId, _name);
-        tokens[_eventId].mint(msg.sender, id, _amount);
+        uint256 tokenId = getIdByName(_eventId, _name);
+        tokens[_eventId].mint(msg.sender, tokenId, _amount);
         emit ERC1155Minted(msg.sender, address(tokens[_eventId]), _amount);
+    }
+
+    function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external {
+        uint256 id = getIdByName(_eventId, _name);
+        tokens[_eventId].refund(msg.sender, id, _amount);
+        emit ERC1155Burned(msg.sender, address(tokens[_eventId]), _amount);
+    }
+
+    function refundEventTicket(uint256 _eventId, uint256 _tokenId, uint256 _amount) external {
+        tokens[_eventId].burn(msg.sender, _tokenId, _amount);
+        emit ERC1155Burned(msg.sender, address(tokens[_eventId]), _amount);
     }
 
     function setGlobals(address _globals) external onlyGovernor {

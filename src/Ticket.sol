@@ -1,30 +1,33 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Ticket is ERC1155, Ownable {
-    string[] public names; //string array of names
-    uint256[] public ids; //uint array of ids
+contract Ticket is ERC1155, ERC1155Burnable, Ownable {
+    IERC20 public asset; // the asset used to mint tickets
+    string[] public names; // string array of names
+    uint256[] public ids; // uint array of ids
     uint256[] public mintPrices;
     uint256[] public maxSupplys;
 
-    string public baseMetadataURI; //the token metadata URI
-    string public name; //the token mame
-    uint256 public maxPerWallet; //the maximum number of tokens that can be minted per wallet
-    uint256 public startTimestamp; //the timestamp when minting starts
-    uint256 public endTimestamp; //the timestamp when minting ends
+    string public baseMetadataURI; // the token metadata URI
+    string public name; // the token mame
+    uint256 public maxPerWallet; // the maximum number of tokens that can be minted per wallet
+    uint256 public startTimestamp; // the timestamp when minting starts
+    uint256 public endTimestamp; // the timestamp when minting ends
 
-    mapping(string => uint256) public nameToId; //name to id mapping
-    mapping(uint256 => string) public idToName; //id to name mapping
-    mapping(uint256 => uint256) public idToPrice; //id to price mapping
+    mapping(string => uint256) public nameToId; // name to id mapping
+    mapping(uint256 => string) public idToName; // id to name mapping
+    mapping(uint256 => uint256) public idToPrice; // id to price mapping
+    mapping(uint256 => uint256) public totalSupply; // id to supply mapping
 
-    /*
-    constructor is executed when the factory contract calls its own deployERC1155 method
-    */
     constructor(
+        address _asset,
         string memory _contractName,
         string memory _baseURI,
         uint256 _maxPerWallet,
@@ -35,6 +38,8 @@ contract Ticket is ERC1155, Ownable {
         string[] memory _names,
         uint256[] memory _ids
     ) ERC1155(_baseURI) {
+        require(_asset != address(0), "Ticket: asset is zero address");
+        asset = IERC20(_asset);
         names = _names;
         ids = _ids;
         mintPrices = _mintPrices;
@@ -75,15 +80,15 @@ contract Ticket is ERC1155, Ownable {
     /*
     used to change metadata, only owner access
     */
-    function setURI(string memory newuri) public onlyOwner {
-        _setURI(newuri);
+    function setURI(string memory _newURI) public onlyOwner {
+        _setURI(_newURI);
     }
 
     /*
     set a mint fee. only used for mint, not batch.
     */
-    function setFeeById(uint256 _id, uint256 _fee) public onlyOwner {
-        idToPrice[_id] = _fee;
+    function setPriceById(uint256 _id, uint256 _price) public onlyOwner {
+        idToPrice[_id] = _price;
     }
 
     /*
@@ -93,13 +98,14 @@ contract Ticket is ERC1155, Ownable {
     _id - the ID being minted
     amount - amount of tokens to mint
     */
-    function mint(address account, uint256 _id, uint256 amount) public payable returns (uint256) {
+    function mint(address _receiver, uint256 _id, uint256 amount) public returns (uint256) {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
-        require(balanceOf(account, _id) + amount <= maxSupplys[_id], "Ticket: max supply exceeded");
         require(_checkMaxPerWalletWhenMint(amount), "Ticket: max per wallet exceeded");
-        require(idToPrice[_id] == msg.value, "Ticket: incorrect mint fee");
-
-        _mint(account, _id, amount, "");
+        require(totalSupply[_id] + amount <= maxSupplys[_id], "Ticket: max supply exceeded");
+        totalSupply[_id] += amount;
+        // transfer asset to contract
+        SafeERC20.safeTransferFrom(asset, tx.origin, address(this), idToPrice[_id] * amount);
+        _mint(_receiver, _id, amount, "");
         return _id;
     }
 
@@ -117,9 +123,9 @@ contract Ticket is ERC1155, Ownable {
         _mintBatch(to, _ids, amounts, data);
     }
 
-    // implement refund mechanism
-    function refund() public {
-        
+    // TODO: implement refund mechanism
+    function refund(address _burner, uint256 _id, uint256 _amount) public {
+
     }
 
     // implement withdraw feature for owner
@@ -132,7 +138,7 @@ contract Ticket is ERC1155, Ownable {
     function _checkMaxPerWalletWhenMint(uint256 amount) internal view returns (bool) {
         uint256 total = 0;
         for (uint256 i = 0; i < ids.length; ++i) {
-            total += balanceOf(msg.sender, ids[i]);
+            total += balanceOf(tx.origin, ids[i]);
         }
         return (total + amount <= maxPerWallet);
     }
@@ -140,7 +146,7 @@ contract Ticket is ERC1155, Ownable {
     function _checkMaxPerWalletWhenMintBatch(uint256[] memory amounts) internal view returns (bool) {
         uint256 total = 0;
         for (uint256 i = 0; i < ids.length; ++i) {
-            total += balanceOf(msg.sender, ids[i]);
+            total += balanceOf(tx.origin, ids[i]);
             total += amounts[i];
         }
         return total <= maxPerWallet;
