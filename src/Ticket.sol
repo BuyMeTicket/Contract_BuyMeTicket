@@ -4,18 +4,18 @@ pragma solidity ^0.8.19;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {ERC1155Burnable} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {UD60x18, ud} from "@prb/math/UD60x18.sol";
 
-contract Ticket is ERC1155, ERC1155Burnable, Ownable {
+contract Ticket is ERC1155, Ownable {
     IERC20 public asset; // the asset used to mint tickets
     string[] public names; // string array of names
     uint256[] public ids; // uint array of ids
     uint256[] public mintPrices;
     uint256[] public maxSupplys;
 
+    address immutable EVENT_HOLDER; // the address of the event holder
     string public baseMetadataURI; // the token metadata URI
     string public name; // the token mame
     uint256 public maxPerWallet; // the maximum number of tokens that can be minted per wallet
@@ -28,6 +28,7 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
     mapping(uint256 => uint256) public totalSupply; // id to supply mapping
 
     constructor(
+        address _eventHolder,
         address _asset,
         string memory _contractName,
         string memory _baseURI,
@@ -40,6 +41,8 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         uint256[] memory _ids
     ) ERC1155(_baseURI) {
         require(_asset != address(0), "Ticket: asset is zero address");
+        require(_eventHolder != address(0), "Ticket: event holder is zero address");
+        EVENT_HOLDER = _eventHolder;
         asset = IERC20(_asset);
         names = _names;
         ids = _ids;
@@ -53,29 +56,7 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         startTimestamp = _startTimestamp;
         endTimestamp = _endTimestamp;
 
-        transferOwnership(tx.origin);
-    }
-
-    /*
-    creates a mapping of strings to ids (i.e ["one","two"], [1,2] - "one" maps to 1, vice versa.)
-    */
-    function createMapping() private {
-        for (uint256 id = 0; id < ids.length; id++) {
-            nameToId[names[id]] = ids[id];
-            idToName[ids[id]] = names[id];
-            idToPrice[ids[id]] = mintPrices[id];
-        }
-    }
-    /*
-    sets our URI and makes the ERC1155 OpenSea compatible
-    */
-
-    function uri(uint256 _tokenid) public view override returns (string memory) {
-        return string(abi.encodePacked(baseMetadataURI, Strings.toString(_tokenid), ".json"));
-    }
-
-    function getNames() public view returns (string[] memory) {
-        return names;
+        transferOwnership(msg.sender);
     }
 
     /*
@@ -99,13 +80,13 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
     _id - the ID being minted
     amount - amount of tokens to mint
     */
-    function mint(address _receiver, uint256 _id, uint256 amount) public returns (uint256) {
+    function mint(address _receiver, uint256 _id, uint256 amount) public onlyTicketFactory returns (uint256) {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
-        require(_checkMaxPerWalletWhenMint(amount), "Ticket: max per wallet exceeded");
+        require(_checkMaxPerWalletWhenMint(_receiver, amount), "Ticket: max per wallet exceeded");
         require(totalSupply[_id] + amount <= maxSupplys[_id], "Ticket: max supply exceeded");
         totalSupply[_id] += amount;
         // transfer asset to contract
-        SafeERC20.safeTransferFrom(asset, tx.origin, address(this), idToPrice[_id] * amount);
+        SafeERC20.safeTransferFrom(asset, _receiver, address(this), idToPrice[_id] * amount);
         _mint(_receiver, _id, amount, "");
         return _id;
     }
@@ -118,28 +99,29 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
     amounts - amount of tokens to mint given ID
     bytes - additional field to pass data to function
     */
-    function mintBatch(address to, uint256[] memory _ids, uint256[] memory amounts, bytes memory data) public {
+    function mintBatch(address _receiver, uint256[] memory _ids, uint256[] memory amounts, bytes memory data) public onlyTicketFactory{
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
-        require(_checkMaxPerWalletWhenMintBatch(amounts), "Ticket: max per wallet exceeded");
-        _mintBatch(to, _ids, amounts, data);
+        require(_checkMaxPerWalletWhenMintBatch(_receiver, amounts), "Ticket: max per wallet exceeded");
+        _mintBatch(_receiver, _ids, amounts, data);
     }
 
-    // TODO: implement refund mechanism
-    function refund(address _burner, uint256 _id, uint256 _amount) public {
-        burn(_burner, _id, _amount);
+    function refund(address _burner, uint256 _id, uint256 _amount) public onlyTicketFactory{
+        _burn(_burner, _id, _amount);
         // transfer asset to burner
-        // ex. 100ee18 * 3 * 0.5 = 150e18
+        // ex. 100e18 * 3 * 0.5 = 150e18
         uint256 refundAmount = (ud(idToPrice[_id] * _amount).mul(_getRefundRate())).intoUint256();
+        // approve asset to TicketFactory
+        asset.approve(msg.sender, refundAmount);
         SafeERC20.safeTransferFrom(asset, address(this), _burner, refundAmount);
     }
 
-    function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public {
-        burnBatch(_burner, _ids, _amounts);
+    function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public onlyTicketFactory {
+        _burnBatch(_burner, _ids, _amounts);
     }
 
-    // implement withdraw feature for owner
-    function withdraw() public onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+    // TODO: implement withdraw feature for event holder
+    function withdraw() public onlyTicketFactory {
+
     }
 
     /**
@@ -186,6 +168,22 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         _refundRate = _getRefundRate().intoUint256();
     }
 
+    // sets our URI and makes the ERC1155 OpenSea compatible
+    function uri(uint256 _tokenid) public view override returns (string memory) {
+        return string(abi.encodePacked(baseMetadataURI, Strings.toString(_tokenid), ".json"));
+    }
+
+    function getNames() public view returns (string[] memory) {
+        return names;
+    }
+
+    //** Modifier */
+
+    modifier onlyTicketFactory() {
+        require(msg.sender == owner(), "Ticket: caller is not the owner");
+        _;
+    }
+
     //** Help Function */
 
     function _getRefundRate() internal view returns (UD60x18 _refundRate) {
@@ -197,24 +195,33 @@ contract Ticket is ERC1155, ERC1155Burnable, Ownable {
         _maximum = _a.gt(_b) ? _a : _b;
     }
 
-    function _checkMaxPerWalletWhenMint(uint256 amount) internal view returns (bool) {
+    function _checkMaxPerWalletWhenMint(address _receiver, uint256 _amount) internal view returns (bool) {
         uint256 total = 0;
         for (uint256 i = 0; i < ids.length; ++i) {
-            total += balanceOf(tx.origin, ids[i]);
+            total += balanceOf(_receiver, ids[i]);
         }
-        return (total + amount <= maxPerWallet);
+        return (total + _amount <= maxPerWallet);
     }
 
-    function _checkMaxPerWalletWhenMintBatch(uint256[] memory amounts) internal view returns (bool) {
+    function _checkMaxPerWalletWhenMintBatch(address _receiver, uint256[] memory _amounts) internal view returns (bool) {
         uint256 total = 0;
         for (uint256 i = 0; i < ids.length; ++i) {
-            total += balanceOf(tx.origin, ids[i]);
-            total += amounts[i];
+            total += balanceOf(_receiver, ids[i]);
+            total += _amounts[i];
         }
         return total <= maxPerWallet;
     }
 
     function _checkDuringMinting() internal view returns (bool) {
         return (block.timestamp >= startTimestamp && block.timestamp <= endTimestamp);
+    }
+
+    // creates a mapping of strings to ids (i.e ["one","two"], [1,2] - "one" maps to 1, vice versa.)
+    function createMapping() private {
+        for (uint256 id = 0; id < ids.length; id++) {
+            nameToId[names[id]] = ids[id];
+            idToName[ids[id]] = names[id];
+            idToPrice[ids[id]] = mintPrices[id];
+        }
     }
 }
