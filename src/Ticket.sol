@@ -7,8 +7,9 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {UD60x18, ud} from "@prb/math/UD60x18.sol";
+import {ITicketEvent} from "./interfaces/ITicketEvent.sol";
 
-contract Ticket is ERC1155, Ownable {
+contract Ticket is ERC1155, Ownable, ITicketEvent {
     IERC20 public asset; // the asset used to mint tickets
     string[] public names; // string array of names
     uint256[] public ids; // uint array of ids
@@ -55,8 +56,6 @@ contract Ticket is ERC1155, Ownable {
         maxPerWallet = _maxPerWallet;
         startTimestamp = _startTimestamp;
         endTimestamp = _endTimestamp;
-
-        transferOwnership(msg.sender);
     }
 
     /*
@@ -99,20 +98,25 @@ contract Ticket is ERC1155, Ownable {
     amounts - amount of tokens to mint given ID
     bytes - additional field to pass data to function
     */
-    function mintBatch(address _receiver, uint256[] memory _ids, uint256[] memory amounts, bytes memory data) public onlyTicketFactory{
+    function mintBatch(address _receiver, uint256[] memory _ids, uint256[] memory amounts, bytes memory data)
+        public
+        onlyTicketFactory
+    {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
         require(_checkMaxPerWalletWhenMintBatch(_receiver, amounts), "Ticket: max per wallet exceeded");
         _mintBatch(_receiver, _ids, amounts, data);
     }
 
-    function refund(address _burner, uint256 _id, uint256 _amount) public onlyTicketFactory{
+    function refund(address _burner, uint256 _id, uint256 _amount)
+        public
+        onlyTicketFactory
+        returns (uint256 refundAmount)
+    {
+        refundAmount = (ud(idToPrice[_id] * _amount).mul(_getRefundRate())).intoUint256();
         _burn(_burner, _id, _amount);
-        // transfer asset to burner
-        // ex. 100e18 * 3 * 0.5 = 150e18
-        uint256 refundAmount = (ud(idToPrice[_id] * _amount).mul(_getRefundRate())).intoUint256();
         // approve asset to TicketFactory
         asset.approve(msg.sender, refundAmount);
-        SafeERC20.safeTransferFrom(asset, address(this), _burner, refundAmount);
+        SafeERC20.safeTransfer(asset, _burner, refundAmount);
     }
 
     function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public onlyTicketFactory {
@@ -120,8 +124,11 @@ contract Ticket is ERC1155, Ownable {
     }
 
     // TODO: implement withdraw feature for event holder
-    function withdraw() public onlyTicketFactory {
-
+    function withdraw() public {
+        require(msg.sender == EVENT_HOLDER, "Ticket: caller is not the event holder");
+        // transfer asset to event holder
+        emit Withdrawn(EVENT_HOLDER, asset.balanceOf(address(this)));
+        SafeERC20.safeTransfer(asset, EVENT_HOLDER, asset.balanceOf(address(this)));
     }
 
     /**
@@ -203,7 +210,11 @@ contract Ticket is ERC1155, Ownable {
         return (total + _amount <= maxPerWallet);
     }
 
-    function _checkMaxPerWalletWhenMintBatch(address _receiver, uint256[] memory _amounts) internal view returns (bool) {
+    function _checkMaxPerWalletWhenMintBatch(address _receiver, uint256[] memory _amounts)
+        internal
+        view
+        returns (bool)
+    {
         uint256 total = 0;
         for (uint256 i = 0; i < ids.length; ++i) {
             total += balanceOf(_receiver, ids[i]);
