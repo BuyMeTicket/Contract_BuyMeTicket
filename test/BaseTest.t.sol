@@ -3,15 +3,14 @@ pragma solidity ^0.8.19;
 
 import {Globals} from "../src/Globals.sol";
 import {TicketFactory} from "../src/TicketFactory.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {MockERC20} from "./utils/MockERC20.sol";
 import {PRBTest} from "@prb-test/PRBTest.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {console} from "forge-std/console.sol";
 import {UD60x18, ud} from "@prb/math/UD60x18.sol";
 
 abstract contract BaseTest is PRBTest, StdCheats {
-    ERC20 internal usdt;
+    MockERC20 internal usdt;
 
     Globals public globals;
     TicketFactory public ticketFactory;
@@ -21,7 +20,7 @@ abstract contract BaseTest is PRBTest, StdCheats {
     address payable EVENT_PARTICIPANT;
 
     function setUp() public virtual {
-        usdt = new ERC20("USDT Stablecoin", "USDT");
+        usdt = new MockERC20("USDT Stablecoin", "USDT");
 
         // create all the users
         GOVERNOR = createUser("GOVERNOR");
