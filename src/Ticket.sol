@@ -120,7 +120,7 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     }
 
     function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public onlyTicketFactory {
-        _burnBatch(_burner, _ids, _amounts);
+        
     }
 
     // TODO: implement withdraw feature for event holder

@@ -43,5 +43,11 @@ interface ITicketFactory is ITicketFactoryEvent {
 
     function mintEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external;
 
-    function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external;
+    function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount)
+        external
+        returns (uint256 refundAmount);
+
+    function refundEventTicket(uint256 _eventId, uint256 _id, uint256 _amount)
+        external
+        returns (uint256 refundAmount);
 }

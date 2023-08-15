@@ -19,7 +19,7 @@ contract TicketFactory is ITicketFactory {
     }
 
     //** Storage */
-
+    bytes32 internal merkleRoot;
     IGlobals public globals;
     Ticket[] public tokens; //an array that contains different ERC1155 tokens contracrt deployed
     mapping(uint256 => address) public eventIdToAddr; //index to contract address mapping
@@ -47,6 +47,7 @@ contract TicketFactory is ITicketFactory {
      * @return _eventId index of deployed ERC1155 token
      */
     function createEvent(
+        address _eventHolder,
         address _asset,
         string memory _contractName,
         string memory _baseURI,
@@ -59,6 +60,7 @@ contract TicketFactory is ITicketFactory {
         uint256[] memory _ids
     ) public onlyEventHolder returns (address _eventAddress, uint256 _eventId) {
         Ticket t = new Ticket(
+            msg.sender,
             _asset, 
             _contractName,
             _baseURI,
@@ -91,20 +93,35 @@ contract TicketFactory is ITicketFactory {
         emit ERC1155Minted(msg.sender, address(tokens[_eventId]), _amount);
     }
 
-    function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external {
-        uint256 id = getIdByName(_eventId, _name);
-        tokens[_eventId].refund(msg.sender, id, _amount);
-        emit ERC1155Burned(msg.sender, address(tokens[_eventId]), _amount);
+    function mintEventTicket(uint256 _eventId, uint256 _tokenId, uint256 _amount) external {
+        tokens[_eventId].mint(msg.sender, _tokenId, _amount);
+        emit ERC1155Minted(msg.sender, address(tokens[_eventId]), _amount);
     }
 
-    function refundEventTicket(uint256 _eventId, uint256 _tokenId, uint256 _amount) external {
-        tokens[_eventId].burn(msg.sender, _tokenId, _amount);
-        emit ERC1155Burned(msg.sender, address(tokens[_eventId]), _amount);
+    function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount)
+        external
+        returns (uint256 refundAmount)
+    {
+        uint256 id = getIdByName(_eventId, _name);
+        refundAmount = tokens[_eventId].refund(msg.sender, id, _amount);
+        emit ERC1155Refunded(msg.sender, address(tokens[_eventId]), _amount);
+    }
+
+    function refundEventTicket(uint256 _eventId, uint256 _tokenId, uint256 _amount)
+        external
+        returns (uint256 refundAmount)
+    {
+        refundAmount = tokens[_eventId].refund(msg.sender, _tokenId, _amount);
+        emit ERC1155Refunded(msg.sender, address(tokens[_eventId]), _amount);
     }
 
     function setGlobals(address _globals) external onlyGovernor {
         require(_globals != address(0) && IGlobals(_globals).governor() != address(0), "TicketFactory: invalid globals");
         globals = IGlobals(_globals);
+    }
+
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyGovernor {
+        merkleRoot = _merkleRoot;
     }
 
     //** View Functions */
