@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;
 
-interface ITicketFactory {
-    //** events */
+import {ITicketFactoryEvent} from "./ITicketFactoryEvent.sol";
 
-    event ERC1155Created(address _owner, address _tokenContract); //emitted when ERC1155 token is deployed
-
-    event ERC1155Minted(address _minter, address _tokenContract, uint256 _amount); //emited when ERC1155 token is minted
-
-    event ERC1155Burned(address _burner, address _tokenContract, uint256 _amount); //emited when ERC1155 token is burned
-
+interface ITicketFactory is ITicketFactoryEvent {
     //** view function */
 
     function getAllEventAddr() external view returns (address[] memory);
@@ -34,6 +28,7 @@ interface ITicketFactory {
     //** normal function */
 
     function createEvent(
+        address _eventHolder,
         address _asset,
         string memory _contractName,
         string memory _baseURI,
