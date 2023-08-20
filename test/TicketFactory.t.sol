@@ -12,7 +12,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicketEvent {
     }
 
     function test_creatEvent() public {
-        (address eventAddress, uint256 eventId) = _setUpEvent();
+        (, uint256 eventId) = _setUpEvent();
         // assertions
         assertEq(eventId, 0);
     }
@@ -112,16 +112,86 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicketEvent {
         assertEq(usdt.balanceOf(EVENT_HOLDER), 1_000_000e18 + 600e18);
     }
 
+    function test_mintBatchEventTicket() public {
+        (address eventAddress, uint256 eventId) = _setUpEvent();
+        Ticket ticket = Ticket(eventAddress);
+
+        // mint ticket
+        vm.startPrank(EVENT_PARTICIPANT);
+        usdt.approve(eventAddress, 1500e18);
+
+        uint256[] memory mints = new uint256[](3);
+        mints[0] = 1;
+        mints[1] = 2;
+        mints[2] = 3;
+
+        vm.expectEmit(true, true, true, true);
+        emit ERC1155BatchMinted(EVENT_PARTICIPANT, eventAddress, mints);
+        ticketFactory.mintBatchEventTicket(eventId, _dynamicIds(), mints);
+        vm.stopPrank();
+
+        // assertions
+        assertEq(address(ticket), eventAddress);
+        assertEq(ticket.owner(), address(ticketFactory));
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 0), 1);
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 1), 2);
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 2), 3);
+        assertEq(usdt.allowance(EVENT_PARTICIPANT, address(ticket)), 500e18);
+        assertEq(usdt.balanceOf(address(ticket)), 1000e18);
+        assertEq(usdt.balanceOf(EVENT_PARTICIPANT), 1_000_000e18 - 1000e18);
+    }
+
+    function test_refundBatchEventTicket() public {
+        (address eventAddress, uint256 eventId) = _setUpEvent();
+        Ticket ticket = Ticket(eventAddress);
+
+        // mint ticket
+        vm.startPrank(EVENT_PARTICIPANT);
+        usdt.approve(eventAddress, 1500e18);
+
+        uint256[] memory mints = new uint256[](3);
+        mints[0] = 1;
+        mints[1] = 2;
+        mints[2] = 3;
+
+        vm.expectEmit(true, true, true, true);
+        emit ERC1155BatchMinted(EVENT_PARTICIPANT, eventAddress, mints);
+        ticketFactory.mintBatchEventTicket(eventId, _dynamicIds(), mints);
+        vm.stopPrank();
+
+        // refund ticket
+        vm.startPrank(EVENT_PARTICIPANT);
+        vm.expectEmit(true, true, true, true);
+        emit ERC1155BatchRefunded(EVENT_PARTICIPANT, eventAddress, mints);
+        // assume 5 days passed
+        vm.warp(block.timestamp + 5 days);
+
+        uint256[] memory refunds = new uint256[](3);
+        refunds[0] = 1;
+        refunds[1] = 2;
+        refunds[2] = 3;
+
+        uint256 refundAmount = ticketFactory.refundBatchEventTicket(eventId, _dynamicIds(), refunds);
+        vm.stopPrank();
+
+        // assertions
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 0), 0);
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 1), 0);
+        assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 2), 0);
+        assertEq(usdt.balanceOf(address(ticket)), 1000e18 - refundAmount);
+        assertEq(usdt.balanceOf(EVENT_PARTICIPANT), 1_000_000e18 - 1000e18 + refundAmount);
+    }
+
+    //** Helper Functions */
+
     function _max(UD60x18 _a, UD60x18 _b) internal pure returns (UD60x18 _maximum) {
         _maximum = _a.gt(_b) ? _a : _b;
     }
 
-    //** Helper Functions */
     function _setUpEvent() internal returns (address _eventAddress, uint256 _eventId) {
         vm.prank(EVENT_HOLDER);
         // create event
         (_eventAddress, _eventId) = ticketFactory.createEvent(
-            msg.sender,
             address(usdt),
             "test",
             "testURI",

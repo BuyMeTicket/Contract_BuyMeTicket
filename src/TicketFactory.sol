@@ -47,7 +47,6 @@ contract TicketFactory is ITicketFactory {
      * @return _eventId index of deployed ERC1155 token
      */
     function createEvent(
-        address _eventHolder,
         address _asset,
         string memory _contractName,
         string memory _baseURI,
@@ -98,6 +97,20 @@ contract TicketFactory is ITicketFactory {
         emit ERC1155Minted(msg.sender, address(tokens[_eventId]), _amount);
     }
 
+    function mintBatchEventTicket(uint256 _eventId, string[] memory _names, uint256[] memory _amounts) external {
+        uint256[] memory ids = new uint256[](_names.length);
+        for (uint256 i = 0; i < _names.length; i++) {
+            ids[i] = getIdByName(_eventId, _names[i]);
+        }
+        tokens[_eventId].mintBatch(msg.sender, ids, _amounts, "");
+        emit ERC1155BatchMinted(msg.sender, address(tokens[_eventId]), _amounts);
+    }
+
+    function mintBatchEventTicket(uint256 _eventId, uint256[] memory _tokenIds, uint256[] memory _amounts) external {
+        tokens[_eventId].mintBatch(msg.sender, _tokenIds, _amounts, "");
+        emit ERC1155BatchMinted(msg.sender, address(tokens[_eventId]), _amounts);
+    }
+
     function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount)
         external
         returns (uint256 refundAmount)
@@ -113,6 +126,26 @@ contract TicketFactory is ITicketFactory {
     {
         refundAmount = tokens[_eventId].refund(msg.sender, _tokenId, _amount);
         emit ERC1155Refunded(msg.sender, address(tokens[_eventId]), _amount);
+    }
+
+    function refundBatchEventTicket(uint256 _eventId, string[] memory _names, uint256[] memory _amounts)
+        external
+        returns (uint256 refundAmount)
+    {
+        uint256[] memory ids = new uint256[](_names.length);
+        for (uint256 i = 0; i < _names.length; i++) {
+            ids[i] = getIdByName(_eventId, _names[i]);
+        }
+        refundAmount = tokens[_eventId].refundBatch(msg.sender, ids, _amounts);
+        emit ERC1155BatchRefunded(msg.sender, address(tokens[_eventId]), _amounts);
+    }
+
+    function refundBatchEventTicket(uint256 _eventId, uint256[] memory _tokenIds, uint256[] memory _amounts)
+        external
+        returns (uint256 refundAmount)
+    {
+        refundAmount = tokens[_eventId].refundBatch(msg.sender, _tokenIds, _amounts);
+        emit ERC1155BatchRefunded(msg.sender, address(tokens[_eventId]), _amounts);
     }
 
     function setGlobals(address _globals) external onlyGovernor {

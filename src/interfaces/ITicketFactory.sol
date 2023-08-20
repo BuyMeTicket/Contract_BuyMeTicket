@@ -27,8 +27,11 @@ interface ITicketFactory is ITicketFactoryEvent {
 
     //** normal function */
 
+    function setGlobals(address _globals) external;
+
+    function setMerkleRoot(bytes32 _merkleRoot) external;
+
     function createEvent(
-        address _eventHolder,
         address _asset,
         string memory _contractName,
         string memory _baseURI,
@@ -43,11 +46,25 @@ interface ITicketFactory is ITicketFactoryEvent {
 
     function mintEventTicket(uint256 _eventId, string memory _name, uint256 _amount) external;
 
+    function mintEventTicket(uint256 _eventId, uint256 _tokenId, uint256 _amount) external;
+
+    function mintBatchEventTicket(uint256 _eventId, string[] memory _names, uint256[] memory _amounts) external;
+
+    function mintBatchEventTicket(uint256 _eventId, uint256[] memory _tokenIds, uint256[] memory _amounts) external;
+
     function refundEventTicket(uint256 _eventId, string memory _name, uint256 _amount)
         external
         returns (uint256 refundAmount);
 
     function refundEventTicket(uint256 _eventId, uint256 _id, uint256 _amount)
+        external
+        returns (uint256 refundAmount);
+
+    function refundBatchEventTicket(uint256 _eventId, string[] memory _names, uint256[] memory _amounts)
+        external
+        returns (uint256 refundAmount);
+
+    function refundBatchEventTicket(uint256 _eventId, uint256[] memory _tokenIds, uint256[] memory _amounts)
         external
         returns (uint256 refundAmount);
 }

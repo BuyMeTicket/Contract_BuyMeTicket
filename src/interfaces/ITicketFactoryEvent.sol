@@ -6,5 +6,9 @@ interface ITicketFactoryEvent {
 
     event ERC1155Minted(address _minter, address _tokenContract, uint256 _amount); //emited when ERC1155 token is minted
 
+    event ERC1155BatchMinted(address _minter, address _tokenContract, uint256[] _amounts); //emited when ERC1155 token is minted
+
     event ERC1155Refunded(address _burner, address _tokenContract, uint256 _amount); //emited when ERC1155 token is burned
+
+    event ERC1155BatchRefunded(address _burner, address _tokenContract, uint256[] _amounts); //emited when ERC1155 token is burned
 }

@@ -104,6 +104,15 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
         require(_checkMaxPerWalletWhenMintBatch(_receiver, amounts), "Ticket: max per wallet exceeded");
+
+        uint256 totalPrice = 0;
+        for (uint256 i = 0; i < _ids.length; ++i) {
+            require(totalSupply[_ids[i]] + amounts[i] <= maxSupplys[_ids[i]], "Ticket: max supply exceeded");
+            totalSupply[_ids[i]] += amounts[i];
+            totalPrice += idToPrice[_ids[i]] * amounts[i];
+        }
+
+        SafeERC20.safeTransferFrom(asset, _receiver, address(this), totalPrice);
         _mintBatch(_receiver, _ids, amounts, data);
     }
 
@@ -119,8 +128,19 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
         SafeERC20.safeTransfer(asset, _burner, refundAmount);
     }
 
-    function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts) public onlyTicketFactory {
-        
+    function refundBatch(address _burner, uint256[] memory _ids, uint256[] memory _amounts)
+        public
+        onlyTicketFactory
+        returns (uint256 refundAmount)
+    {
+        refundAmount = 0;
+        for (uint256 i = 0; i < _ids.length; ++i) {
+            refundAmount += (ud(idToPrice[_ids[i]] * _amounts[i]).mul(_getRefundRate())).intoUint256();
+        }
+        _burnBatch(_burner, _ids, _amounts);
+        // approve asset to TicketFactory
+        asset.approve(msg.sender, refundAmount);
+        SafeERC20.safeTransfer(asset, _burner, refundAmount);
     }
 
     // TODO: implement withdraw feature for event holder
