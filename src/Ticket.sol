@@ -28,6 +28,8 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     mapping(uint256 => uint256) public idToPrice; // id to price mapping
     mapping(uint256 => uint256) public totalSupply; // id to supply mapping
 
+    bool public isEventOpen;
+
     constructor(
         address _eventHolder,
         address _asset,
@@ -56,6 +58,11 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
         maxPerWallet = _maxPerWallet;
         startTimestamp = _startTimestamp;
         endTimestamp = _endTimestamp;
+        isEventOpen = true;
+    }
+
+    function setEventStatus(bool _isEventOpen) public onlyOwner {
+        isEventOpen = _isEventOpen;
     }
 
     /*
@@ -79,7 +86,12 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     _id - the ID being minted
     amount - amount of tokens to mint
     */
-    function mint(address _receiver, uint256 _id, uint256 amount) public onlyTicketFactory returns (uint256) {
+    function mint(address _receiver, uint256 _id, uint256 amount)
+        public
+        onlyTicketFactory
+        onlyEventOpen
+        returns (uint256)
+    {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
         require(_checkMaxPerWalletWhenMint(_receiver, amount), "Ticket: max per wallet exceeded");
         require(totalSupply[_id] + amount <= maxSupplys[_id], "Ticket: max supply exceeded");
@@ -101,6 +113,7 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     function mintBatch(address _receiver, uint256[] memory _ids, uint256[] memory amounts, bytes memory data)
         public
         onlyTicketFactory
+        onlyEventOpen
     {
         require(_checkDuringMinting(), "Ticket: minting has not started or has ended");
         require(_checkMaxPerWalletWhenMintBatch(_receiver, amounts), "Ticket: max per wallet exceeded");
@@ -205,6 +218,11 @@ contract Ticket is ERC1155, Ownable, ITicketEvent {
     }
 
     //** Modifier */
+
+    modifier onlyEventOpen() {
+        require(isEventOpen, "Ticket: event is shutdown right now");
+        _;
+    }
 
     modifier onlyTicketFactory() {
         require(msg.sender == owner(), "Ticket: caller is not the owner");
