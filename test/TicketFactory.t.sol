@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 import "./BaseTest.t.sol";
 import {ITicketFactoryEvent} from "../src/interfaces/ITicketFactoryEvent.sol";
-import {ITicketEvent} from "../src/interfaces/ITicketEvent.sol";
+import {ITicket} from "../src/interfaces/ITicket.sol";
 import {Ticket} from "../src/Ticket.sol";
 
-contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicketEvent {
+contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
     function setUp() public override {
         super.setUp();
     }

@@ -7,9 +7,9 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {UD60x18, ud} from "@prb/math/UD60x18.sol";
-import {ITicketEvent} from "./interfaces/ITicketEvent.sol";
+import {ITicket} from "./interfaces/ITicket.sol";
 
-contract Ticket is ERC1155, Ownable, ITicketEvent {
+contract Ticket is ERC1155, Ownable, ITicket {
     IERC20 public asset; // the asset used to mint tickets
     string[] public names; // string array of names
     uint256[] public ids; // uint array of ids
