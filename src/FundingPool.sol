@@ -68,8 +68,7 @@ contract FundingPool is IFundingPool {
     function deposit(uint256 _amount) external override onlyWhenOpen {
         require(_amount > 0, "FundingPool: amount must be greater than zero");
         require(
-            fundAsset.transferFrom(msg.sender, address(this), _amount),
-            "FundingPool: failed to transfer fund asset"
+            fundAsset.transferFrom(msg.sender, address(this), _amount), "FundingPool: failed to transfer fund asset"
         );
 
         UserDepositInfo storage userDepositInfo = userDepositInfos[msg.sender];

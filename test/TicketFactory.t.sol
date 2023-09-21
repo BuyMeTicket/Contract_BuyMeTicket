@@ -6,7 +6,7 @@ import {ITicketFactoryEvent} from "../src/interfaces/ITicketFactoryEvent.sol";
 import {ITicket} from "../src/interfaces/ITicket.sol";
 import {Ticket} from "../src/Ticket.sol";
 
-contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
+contract TicketFactoryTest is BaseTest, ITicket, ITicketFactoryEvent {
     function setUp() public override {
         super.setUp();
     }
@@ -22,12 +22,11 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 600e18);
         vm.expectEmit(true, true, true, true);
         emit ERC1155Minted(EVENT_PARTICIPANT, eventAddress, 3);
         ticketFactory.mintEventTicket(eventId, 1, 3); // mint 3 testB tickets for event 0
-        vm.stopPrank();
 
         // assertions
         assertEq(address(ticket), eventAddress);
@@ -44,7 +43,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 600e18);
         ticketFactory.mintEventTicket(eventId, 1, 3); // mint 3 testB tickets for event 0
 
@@ -55,7 +54,6 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         vm.warp(block.timestamp + 5 days);
 
         uint256 refundAmount = ticketFactory.refundEventTicket(eventId, 1, 3); // refund 3 testB tickets for event 0
-        vm.stopPrank();
 
         // assertions
         assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 1), 0);
@@ -71,7 +69,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 600e18);
         ticketFactory.mintEventTicket(eventId, 1, 3); // mint 3 testB tickets for event 0
 
@@ -80,7 +78,6 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         emit ERC1155Refunded(EVENT_PARTICIPANT, eventAddress, 3);
         vm.warp(block.timestamp + amount * 1 days);
         uint256 refundAmount = ticketFactory.refundEventTicket(eventId, 1, 3); // refund 3 testB tickets for event 0
-        vm.stopPrank();
 
         // assertions
         assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 1), 0);
@@ -94,18 +91,16 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 600e18);
         ticketFactory.mintEventTicket(eventId, 1, 3); // mint 3 testB tickets for event 0
 
-        // withdraw
         changePrank(EVENT_HOLDER);
 
         vm.expectEmit(true, true, true, true);
         emit Withdrawn(EVENT_HOLDER, 600e18);
 
         ticket.withdraw();
-        vm.stopPrank();
 
         // assertions
         assertEq(usdt.balanceOf(address(ticket)), 0);
@@ -117,7 +112,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 1500e18);
 
         uint256[] memory mints = new uint256[](3);
@@ -128,7 +123,6 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         vm.expectEmit(true, true, true, true);
         emit ERC1155BatchMinted(EVENT_PARTICIPANT, eventAddress, mints);
         ticketFactory.mintBatchEventTicket(eventId, _dynamicIds(), mints);
-        vm.stopPrank();
 
         // assertions
         assertEq(address(ticket), eventAddress);
@@ -146,7 +140,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         Ticket ticket = Ticket(eventAddress);
 
         // mint ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         usdt.approve(eventAddress, 1500e18);
 
         uint256[] memory mints = new uint256[](3);
@@ -157,10 +151,9 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         vm.expectEmit(true, true, true, true);
         emit ERC1155BatchMinted(EVENT_PARTICIPANT, eventAddress, mints);
         ticketFactory.mintBatchEventTicket(eventId, _dynamicIds(), mints);
-        vm.stopPrank();
 
         // refund ticket
-        vm.startPrank(EVENT_PARTICIPANT);
+        changePrank(EVENT_PARTICIPANT);
         vm.expectEmit(true, true, true, true);
         emit ERC1155BatchRefunded(EVENT_PARTICIPANT, eventAddress, mints);
         // assume 5 days passed
@@ -172,7 +165,6 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
         refunds[2] = 3;
 
         uint256 refundAmount = ticketFactory.refundBatchEventTicket(eventId, _dynamicIds(), refunds);
-        vm.stopPrank();
 
         // assertions
         assertEq(ticket.balanceOf(EVENT_PARTICIPANT, 0), 0);
@@ -189,7 +181,7 @@ contract TicketFactoryTest is BaseTest, ITicketFactoryEvent, ITicket {
     }
 
     function _setUpEvent() internal returns (address _eventAddress, uint256 _eventId) {
-        vm.prank(EVENT_HOLDER);
+        changePrank(EVENT_HOLDER);
         // create event
         (_eventAddress, _eventId) = ticketFactory.createEvent(
             address(usdt),
