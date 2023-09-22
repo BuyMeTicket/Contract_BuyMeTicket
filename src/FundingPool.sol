@@ -15,12 +15,7 @@ contract FundingPool is IFundingPool {
     uint256 public totalDepositedAmount;
     bool public isTargetReached;
 
-    struct UserDepositInfo {
-        uint256 amount;
-        uint256 timestamp;
-    }
-
-    mapping(address => UserDepositInfo) public userDepositInfos;
+    mapping(address => uint256) public userDepositInfo;
 
     //** Modifiers */
 
@@ -29,7 +24,7 @@ contract FundingPool is IFundingPool {
         _;
     }
 
-    modifier onlyWhenOpen() {
+    modifier WhenOpen() {
         require(_isPoolOpen(), "FundingPool: pool not open");
         _;
     }
@@ -65,20 +60,17 @@ contract FundingPool is IFundingPool {
     /**
      * @dev Deposit `_amount` of `fundAsset` into the pool.
      */
-    function deposit(uint256 _amount) external override onlyWhenOpen {
+    function deposit(uint256 _amount) external override WhenOpen {
         require(_amount > 0, "FundingPool: amount must be greater than zero");
         require(
             fundAsset.transferFrom(msg.sender, address(this), _amount), "FundingPool: failed to transfer fund asset"
         );
 
-        UserDepositInfo storage userDepositInfo = userDepositInfos[msg.sender];
-        userDepositInfo.amount += _amount;
-        userDepositInfo.timestamp = block.timestamp;
+        userDepositInfo[msg.sender] += _amount;
 
-        totalDepositedAmount += _amount;
         emit Deposit(msg.sender, _amount);
 
-        if (totalDepositedAmount >= targetAmount) {
+        if (fundAsset.balanceOf(address(this)) >= targetAmount) {
             isTargetReached = true;
         }
     }
@@ -87,7 +79,7 @@ contract FundingPool is IFundingPool {
      * @dev admin withdraws all fund asset from the pool.
      */
     function withdraw() external override onlyAdmin {
-        require((block.timestamp > endTimestamp) == false, "FundingPool: pool is not closed yet");
+        require(block.timestamp > endTimestamp, "FundingPool: pool not closed");
         require(isTargetReached == true, "FundingPool: target not reached");
 
         uint256 amount = fundAsset.balanceOf(address(this));
@@ -98,14 +90,13 @@ contract FundingPool is IFundingPool {
     }
 
     function redeem() external override {
-        require((block.timestamp > endTimestamp) == true, "FundingPool: pool is not closed yet");
+        require((block.timestamp > endTimestamp) == true, "FundingPool: pool not closed");
         require(isTargetReached == false, "FundingPool: target reached");
 
-        UserDepositInfo storage userDepositInfo = userDepositInfos[msg.sender];
-        require(userDepositInfo.amount > 0, "FundingPool: no deposit found");
+        require(userDepositInfo[msg.sender] > 0, "FundingPool: no deposit found");
 
-        uint256 amount = userDepositInfo.amount;
-        userDepositInfo.amount = 0;
+        uint256 amount = userDepositInfo[msg.sender];
+        userDepositInfo[msg.sender] = 0;
 
         require(fundAsset.transfer(msg.sender, amount), "FundingPool: failed to transfer fund asset");
         emit Redeem(msg.sender, amount);
