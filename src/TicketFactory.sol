@@ -7,7 +7,6 @@ import {IGlobals} from "./interfaces/IGlobals.sol";
 
 contract TicketFactory is ITicketFactory {
     //** Modifier */
-
     modifier onlyEventHolder() {
         require(globals.isValidEventHolder(msg.sender), "TicketFactory: only valid event holder");
         _;
@@ -19,7 +18,7 @@ contract TicketFactory is ITicketFactory {
     }
 
     //** Storage */
-    bytes32 internal merkleRoot;
+    bytes32 public merkleRoot;
     IGlobals public globals;
     Ticket[] public tokens; //an array that contains different ERC1155 tokens contracrt deployed
     mapping(uint256 => address) public eventIdToAddr; //index to contract address mapping

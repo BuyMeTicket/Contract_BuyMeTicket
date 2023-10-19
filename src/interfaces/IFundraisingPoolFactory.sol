@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;
 
-interface IFundingPoolFactory {
+interface IFundraisingPoolFactory {
     //** events */
 
-    event FundingPoolCreated(address indexed owner, address indexed tokenContract, uint256 indexed eventId); //emitted when funding pool is deployed
+    event FundraisingPoolCreated(address indexed owner, address indexed tokenContract, uint256 indexed eventId); //emitted when funding pool is deployed
 
     //** view functions */
 

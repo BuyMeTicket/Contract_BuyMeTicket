@@ -9,7 +9,7 @@ import {UUPSProxy} from "../src/libraries/UUPSProxy.sol";
 
 import {Globals} from "../src/Globals.sol";
 import {TicketFactory} from "../src/TicketFactory.sol";
-import {FundingPoolFactory} from "../src/FundingPoolFactory.sol";
+import {FundraisingPoolFactory} from "../src/FundraisingPoolFactory.sol";
 import {MockERC20} from "./utils/MockERC20.sol";
 
 abstract contract BaseTest is PRBTest, StdCheats {
@@ -17,7 +17,7 @@ abstract contract BaseTest is PRBTest, StdCheats {
 
     Globals public globals;
     TicketFactory public ticketFactory;
-    FundingPoolFactory public fundingPoolFactory;
+    FundraisingPoolFactory public fundraisingPoolFactory;
 
     address payable GOVERNOR;
     address payable EVENT_HOLDER;
@@ -40,7 +40,7 @@ abstract contract BaseTest is PRBTest, StdCheats {
         ticketFactory = new TicketFactory(address(globals));
 
         // deploy the funding pool factory and set the globals address
-        fundingPoolFactory = new FundingPoolFactory(address(globals));
+        fundraisingPoolFactory = new FundraisingPoolFactory(address(globals));
 
         // label the base test contract
         vm.label(address(usdt), "USDT");
@@ -69,8 +69,9 @@ abstract contract BaseTest is PRBTest, StdCheats {
     }
 
     function deployAndSetUpGlobals() internal returns (Globals _globals) {
+        vm.startPrank(GOVERNOR);
         _globals = Globals(address(new UUPSProxy(address(new Globals()), "")));
-        vm.prank(GOVERNOR);
+        _globals.initialize(GOVERNOR);
         _globals.setValidEventHolder(EVENT_HOLDER, true);
     }
 }
