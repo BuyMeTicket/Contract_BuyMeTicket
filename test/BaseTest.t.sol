@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
+import {StdCheats} from "forge-std/StdCheats.sol";
+import {console} from "forge-std/console.sol";
+import {PRBTest} from "@prb-test/PRBTest.sol";
+import {UD60x18, ud} from "@prb/math/UD60x18.sol";
+import {UUPSProxy} from "../src/libraries/UUPSProxy.sol";
+
 import {Globals} from "../src/Globals.sol";
 import {TicketFactory} from "../src/TicketFactory.sol";
 import {FundingPoolFactory} from "../src/FundingPoolFactory.sol";
 import {MockERC20} from "./utils/MockERC20.sol";
-
-import {PRBTest} from "@prb-test/PRBTest.sol";
-import {StdCheats} from "forge-std/StdCheats.sol";
-import {console} from "forge-std/console.sol";
-import {UD60x18, ud} from "@prb/math/UD60x18.sol";
 
 abstract contract BaseTest is PRBTest, StdCheats {
     MockERC20 internal usdt;
@@ -33,9 +34,7 @@ abstract contract BaseTest is PRBTest, StdCheats {
         DONATER = createUser("DONATER");
 
         // deploy globals and set the governor
-        globals = new Globals(GOVERNOR);
-        vm.prank(GOVERNOR);
-        globals.setValidEventHolder(EVENT_HOLDER, true);
+        globals = deployAndSetUpGlobals();
 
         // deploy the ticket factory and set the globals address
         ticketFactory = new TicketFactory(address(globals));
@@ -67,5 +66,11 @@ abstract contract BaseTest is PRBTest, StdCheats {
         vm.deal({account: user, newBalance: 100 ether});
         deal({token: address(usdt), to: user, give: 1_000_000e18});
         return user;
+    }
+
+    function deployAndSetUpGlobals() internal returns (Globals _globals) {
+        _globals = Globals(address(new UUPSProxy(address(new Globals()), "")));
+        vm.prank(GOVERNOR);
+        _globals.setValidEventHolder(EVENT_HOLDER, true);
     }
 }

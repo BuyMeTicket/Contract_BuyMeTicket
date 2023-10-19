@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;
 
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 import {IGlobals} from "./interfaces/IGlobals.sol";
 
-contract Globals is IGlobals {
+contract Globals is IGlobals, Initializable, UUPSUpgradeable {
     //** Modifier */
     modifier onlyGovernor() {
         require(msg.sender == governor, "Globals: only governor");
@@ -15,10 +18,13 @@ contract Globals is IGlobals {
     mapping(address => bool) public isEventHolders;
     uint256 public override createEventFee = 0 ether;
 
-    constructor(address _governor) {
+    //** UUPS functions */
+    function initialize(address _governor) public initializer {
         require(_governor != address(0), "Globals: _governor is zero address");
         governor = _governor;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernor {}
 
     //** allow list function */
     function setValidEventHolder(address _eventHolder, bool _isValid) external override onlyGovernor {
