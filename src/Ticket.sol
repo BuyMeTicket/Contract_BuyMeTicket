@@ -159,6 +159,7 @@ contract Ticket is ERC1155, Ownable, ITicket {
     // TODO: implement withdraw feature for event holder
     function withdraw() public {
         require(msg.sender == EVENT_HOLDER, "Ticket: caller is not the event holder");
+        require(block.timestamp > endTimestamp, "Ticket: event is not ended yet");
         // transfer asset to event holder
         emit Withdrawn(EVENT_HOLDER, asset.balanceOf(address(this)));
         SafeERC20.safeTransfer(asset, EVENT_HOLDER, asset.balanceOf(address(this)));

@@ -96,6 +96,7 @@ contract TicketFactoryTest is BaseTest, ITicket, ITicketFactoryEvent {
         ticketFactory.mintEventTicket(eventId, 1, 3); // mint 3 testB tickets for event 0
 
         changePrank(EVENT_HOLDER);
+        vm.warp(ticket.endTimestamp() + 1);
 
         vm.expectEmit(true, true, true, true);
         emit Withdrawn(EVENT_HOLDER, 600e18);
