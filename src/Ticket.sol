@@ -269,7 +269,7 @@ contract Ticket is ERC1155, Ownable, ITicket {
     }
 
     function _checkCanRefund() internal view returns (bool) {
-        return (block.timestamp > endTimestamp - 4 days);
+        return (block.timestamp < endTimestamp - 4 days);
     }
 
     // creates a mapping of strings to ids (i.e ["one","two"], [1,2] - "one" maps to 1, vice versa.)

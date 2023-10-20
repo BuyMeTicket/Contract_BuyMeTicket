@@ -64,7 +64,7 @@ contract TicketFactoryTest is BaseTest, ITicket, ITicketFactoryEvent {
 
     function testFuzz_refundEventTicket(uint256 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount < 60);
+        vm.assume(amount < 56);
         (address eventAddress, uint256 eventId) = _setUpEvent();
         Ticket ticket = Ticket(eventAddress);
 

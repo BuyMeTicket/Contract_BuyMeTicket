@@ -39,7 +39,8 @@ contract FundraisingPoolFactory is IFundraisingPoolFactory {
         require(_endTimestamp > _startTimestamp, "FundraisingPoolFactory: end timestamp must be after start timestamp");
         require(_targetAmount > 0, "FundraisingPoolFactory: target amount must be greater than zero");
 
-        FundraisingPool pool = new FundraisingPool(_fundAsset, msg.sender, _startTimestamp, _endTimestamp, _targetAmount);
+        FundraisingPool pool =
+            new FundraisingPool(_fundAsset, msg.sender, _startTimestamp, _endTimestamp, _targetAmount);
         fundraisingPools.push(pool);
         emit FundraisingPoolCreated(msg.sender, address(pool), fundraisingPools.length - 1);
         return (address(pool), fundraisingPools.length - 1);
