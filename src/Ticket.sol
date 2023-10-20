@@ -134,6 +134,7 @@ contract Ticket is ERC1155, Ownable, ITicket {
         onlyTicketFactory
         returns (uint256 refundAmount)
     {
+        require(_checkCanRefund(), "Ticket: refunding is not allowed");
         refundAmount = (ud(idToPrice[_id] * _amount).mul(_getRefundRate())).intoUint256();
         _burn(_burner, _id, _amount);
         // approve asset to TicketFactory
@@ -146,6 +147,7 @@ contract Ticket is ERC1155, Ownable, ITicket {
         onlyTicketFactory
         returns (uint256 refundAmount)
     {
+        require(_checkCanRefund(), "Ticket: refunding is not allowed");
         refundAmount = 0;
         for (uint256 i = 0; i < _ids.length; ++i) {
             refundAmount += (ud(idToPrice[_ids[i]] * _amounts[i]).mul(_getRefundRate())).intoUint256();
@@ -264,6 +266,10 @@ contract Ticket is ERC1155, Ownable, ITicket {
 
     function _checkDuringMinting() internal view returns (bool) {
         return (block.timestamp >= startTimestamp && block.timestamp <= endTimestamp);
+    }
+
+    function _checkCanRefund() internal view returns (bool) {
+        return (block.timestamp > endTimestamp - 4 days);
     }
 
     // creates a mapping of strings to ids (i.e ["one","two"], [1,2] - "one" maps to 1, vice versa.)
